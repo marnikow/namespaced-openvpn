@@ -21,7 +21,7 @@ import sys
 import tempfile
 from collections import defaultdict
 
-VERSION = '0.5.0'
+VERSION = '0.5.1'
 
 LOG = logging.getLogger()
 
@@ -60,11 +60,11 @@ def _adapter_names(namespace):
     return [match.group(1) for match in matches]
 
 
-def setup_namespace(namespace):
+def setup_namespace(namespace, disable_adapter_check):
     """Ensure `namespace` exists and contains only a loopback adapter."""
     if os.path.exists(os.path.join('/var/run/netns', namespace)):
         adapters = _adapter_names(namespace)
-        if adapters != [b'lo']:
+        if not disable_adapter_check and adapters != [b'lo']:
             LOG.error('Namespace %s already has adapters %s, exiting.' % (namespace, adapters))
             raise Exception
     else:
@@ -314,6 +314,10 @@ def parse_validate_args(cl_args):
         help="Disable IPv4 addresses and routes pushed by the server"
     )
     parser.add_argument(
+        "--disable-adapter-check", action='store_true',
+        help="Disable the adapter check. Accept namespaces that contain other devices"
+    )
+    parser.add_argument(
         '-h', '--help',
         action='store_true',
         help='show this help message and exit',
@@ -374,7 +378,7 @@ def main():
     except InvalidArgs:
         return 1
 
-    setup_namespace(args.namespace)
+    setup_namespace(args.namespace, args.disable_adapter_check)
 
     execv_args = ['openvpn']
     execv_args += openvpn_args
